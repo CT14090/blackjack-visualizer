@@ -7,7 +7,9 @@ them, with the line marked in a code view.
 
 Live page: https://ct14090.github.io/blackjack-visualizer/
 
-- Your code runs only in your own browser (Pyodide). It is never uploaded.
+- Your code runs only in your own browser tab (Pyodide). It is never uploaded, and
+  it is not saved: closing or reloading the tab forgets it, so the next person on a
+  shared computer cannot see it.
 - The page holds no solution code. The "Handout examples" check uses only the
   examples printed in the assignment handout.
 

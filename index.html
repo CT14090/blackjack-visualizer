@@ -227,7 +227,7 @@ details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin:
   <header class="top">
     <div>
       <h1>Blackjack Code Visualizer</h1>
-      <p class="sub">COMP 202 Assignment 3. Add your <code>blackjack.py</code> and <code>shuffle_deck.py</code> to watch your own functions build, shuffle and deal the deck, play the hands and pick the winners. Your code runs only in this browser; it is not uploaded or saved anywhere else.</p>
+      <p class="sub">COMP 202 Assignment 3. Add your <code>blackjack.py</code> and <code>shuffle_deck.py</code> to watch your own functions build, shuffle and deal the deck, play the hands and pick the winners. Your code runs only in this browser tab: it is not uploaded, and it is forgotten when you close or reload the tab.</p>
     </div>
     <span class="pill load" id="rt"><span class="dot"></span><span id="rtText">Loading Python…</span></span>
   </header>
@@ -972,8 +972,10 @@ def main(cfg_json):
   };
   var $ = function (id) { return document.getElementById(id); };
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
-  function store(k, v) { try { localStorage.setItem('bjviz.' + k, JSON.stringify(v)); } catch (e) {} }
-  function recall(k) { try { var v = localStorage.getItem('bjviz.' + k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+  // Uploaded code is kept only in this tab's memory, never in browser storage,
+  // so the next person on a shared computer cannot see it. Remove anything an
+  // older version of this page saved.
+  try { localStorage.removeItem('bjviz.files'); localStorage.removeItem('bjviz.real'); } catch (e) {}
 
   /* ---------- cards ---------- */
   function parseCard(c) {
@@ -1035,7 +1037,6 @@ def main(cfg_json):
   var SLOT = { 'blackjack.py': ['f_bj', 'm_bj'], 'shuffle_deck.py': ['f_sd', 'm_sd'] };
   function setFile(slot, name, text) {
     S.files[slot] = text; S.real[slot] = name;
-    store('files', S.files); store('real', S.real);
     S.answers = []; S.gameAnswers = []; S.result = null; S.examples = null;
     showFile(slot);
     updateRunBtn();
@@ -1606,8 +1607,6 @@ def main(cfg_json):
   }
 
   /* ---------- start ---------- */
-  var saved = recall('files'), savedReal = recall('real');
-  if (saved) { S.files = saved; S.real = savedReal || {}; }
   showFile('blackjack.py'); showFile('shuffle_deck.py');
   render();
   boot().then(function () { autoRun(); });
