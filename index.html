@@ -1,0 +1,1618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>Blackjack Code Visualizer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a control rail (files, settings, problems) beside a felt card table that replays each function call. */
+:root {
+  --paper: #eef1ec;
+  --panel: #fbfcfa;
+  --ink: #18211d;
+  --muted: #59665f;
+  --line: #d3dbd5;
+  --felt: #1d5a46;
+  --felt-deep: #164636;
+  --felt-ink: #e8f3ed;
+  --felt-muted: #a9c9ba;
+  --brass: #e0b04a;
+  --act: #1d5a46;
+  --act-ink: #ffffff;
+  --err: #b42323;
+  --err-bg: #fbeceb;
+  --warn: #8a5a00;
+  --warn-bg: #fbf3df;
+  --ok: #217a4b;
+  --ok-bg: #e5f4ea;
+  --code-bg: #f4f6f3;
+  --card: #fdfdfb;
+  --card-edge: #c9ccc6;
+  --red-suit: #c8323a;
+  --black-suit: #1d1f1e;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #111614; --panel: #181f1c; --ink: #e2e9e4; --muted: #98a69e; --line: #2b3631;
+    --felt: #18493a; --felt-deep: #113629; --felt-ink: #e6f1eb; --felt-muted: #9ec0b0;
+    --brass: #e7bb5a; --act: #3c9a76; --act-ink: #0d1411;
+    --err: #ff8a80; --err-bg: #3a1a19; --warn: #f2c66b; --warn-bg: #352a12;
+    --ok: #74d39f; --ok-bg: #16301f; --code-bg: #141a17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #111614; --panel: #181f1c; --ink: #e2e9e4; --muted: #98a69e; --line: #2b3631;
+  --felt: #18493a; --felt-deep: #113629; --felt-ink: #e6f1eb; --felt-muted: #9ec0b0;
+  --brass: #e7bb5a; --act: #3c9a76; --act-ink: #0d1411;
+  --err: #ff8a80; --err-bg: #3a1a19; --warn: #f2c66b; --warn-bg: #352a12;
+  --ok: #74d39f; --ok-bg: #16301f; --code-bg: #141a17;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 20px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 18px; }
+h1 { font: 700 clamp(26px, 4vw, 34px)/1.1 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 6px 0 0; max-width: 62ch; }
+.pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.pill.ready .dot { background: var(--ok); }
+.pill.fail .dot { background: var(--err); }
+.pill.load .dot { background: var(--brass); animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) { .pill.load .dot { animation: none; } * { transition: none !important; } }
+
+.grid { display: grid; grid-template-columns: 330px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; min-width: 0; }
+.box h2 { font: 600 12px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+.slot { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+.slot:first-of-type { border-top: 0; padding-top: 0; }
+.slot .name { font: 600 14px var(--mono); }
+.slot .meta { grid-column: 1; font-size: 13px; color: var(--muted); }
+.slot .meta.ok { color: var(--ok); }
+.slot .meta.bad { color: var(--err); }
+.drop { margin-top: 10px; border: 1.5px dashed var(--line); border-radius: 8px; padding: 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.drop.over { border-color: var(--act); color: var(--ink); background: var(--ok-bg); }
+button, .btn { font: 500 14px var(--body); border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 7px 12px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--muted); }
+button:focus-visible, input:focus-visible, select:focus-visible, .step:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primary { background: var(--act); color: var(--act-ink); border-color: var(--act); font-weight: 600; }
+button.small { padding: 4px 9px; font-size: 13px; }
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+label.field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+input[type=number], input[type=text], select { font: 14px var(--body); padding: 6px 8px; border-radius: 7px; border: 1px solid var(--line);
+  background: var(--paper); color: var(--ink); }
+input[type=number] { width: 96px; font-variant-numeric: tabular-nums; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 12px; }
+.seg button { flex: 1; border: 0; border-radius: 0; padding: 8px 6px; font-size: 13px; background: transparent; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--act); color: var(--act-ink); font-weight: 600; }
+.hint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+
+.err { background: var(--err-bg); border: 1px solid color-mix(in srgb, var(--err) 40%, transparent); border-radius: 8px; padding: 10px 12px; }
+.err .head { color: var(--err); font-weight: 600; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+pre.tb { margin: 0; font: 12.5px/1.45 var(--mono); color: var(--err); white-space: pre-wrap; word-break: break-word; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.checks li { display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 13px; align-items: start; }
+.checks li button { font: 12px var(--mono); padding: 1px 6px; white-space: nowrap; }
+.tag { font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .06em; padding: 2px 7px; border-radius: 5px; }
+.tag.rule { background: var(--warn-bg); color: var(--warn); }
+.tag.note { background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
+.tag.style { background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
+details summary { cursor: pointer; font-size: 13px; color: var(--muted); margin: 8px 0 6px; }
+
+.main { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.steps { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.step { flex: 1 0 auto; display: flex; align-items: center; gap: 8px; padding: 7px 11px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); font: 500 13px var(--mono); color: var(--muted); cursor: pointer; white-space: nowrap; }
+.step .st { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font: 700 11px var(--body); background: var(--code-bg); color: var(--muted); border: 1px solid var(--line); }
+.step.ok .st { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.step.error .st, .step.shape .st, .step.missing .st { background: var(--err-bg); color: var(--err); border-color: transparent; }
+.step.waiting .st { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.step[aria-current="true"] { border-color: var(--ink); color: var(--ink); }
+
+.table { background: radial-gradient(ellipse at 50% 0%, var(--felt) 0%, var(--felt-deep) 100%); color: var(--felt-ink); border-radius: 14px;
+  padding: 18px; min-height: 320px; min-width: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+.table h3 { font: 700 20px/1.2 var(--display); margin: 0 0 4px; }
+.table .cap { color: var(--felt-muted); font-size: 14px; margin: 0 0 14px; max-width: 70ch; }
+.table .cap code, .cap code { font-family: var(--mono); font-size: 13px; }
+.felt-note { background: rgba(0,0,0,.22); border-radius: 8px; padding: 9px 12px; font-size: 14px; margin: 10px 0; }
+.felt-note.warn { box-shadow: inset 3px 0 0 var(--brass); }
+.felt-err { background: var(--err-bg); color: var(--ink); border-radius: 8px; padding: 10px 12px; margin-top: 10px; }
+.felt-err pre { margin: 6px 0 0; font: 12.5px/1.45 var(--mono); color: var(--err); white-space: pre-wrap; word-break: break-word; }
+.scrollx { overflow-x: auto; max-width: 100%; }
+
+.card { --w: 44px; width: var(--w); height: calc(var(--w) * 1.4); border-radius: 5px; background: var(--card); border: 1px solid var(--card-edge);
+  color: var(--black-suit); position: relative; flex: none; display: grid; place-items: center; box-shadow: 0 1px 2px rgba(0,0,0,.35);
+  font-family: var(--body); transition: transform .25s ease, box-shadow .25s ease; }
+.card.red { color: var(--red-suit); }
+.card .r { position: absolute; top: 2px; left: 4px; font: 700 calc(var(--w) * .3)/1 var(--body); }
+.card .s { font-size: calc(var(--w) * .46); line-height: 1; margin-top: calc(var(--w) * .18); }
+.card.mini { --w: 30px; border-radius: 4px; }
+.card.mini .r { top: 1px; left: 3px; }
+.card.hot { box-shadow: 0 0 0 3px var(--brass), 0 2px 6px rgba(0,0,0,.5); transform: translateY(-3px); z-index: 1; }
+.card.new { box-shadow: 0 0 0 2px var(--felt-ink), 0 2px 6px rgba(0,0,0,.5); }
+.card.rigged::after { content: "rigged"; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); font: 700 9px var(--body);
+  background: var(--brass); color: #2a1e00; padding: 0 4px; border-radius: 3px; letter-spacing: .04em; text-transform: uppercase; }
+.card.odd { background: #e9e6df; color: #4a463e; font: 600 9px/1.1 var(--mono); padding: 3px; text-align: center; word-break: break-all; }
+.card.ghost { background: transparent; border: 1px dashed var(--felt-muted); box-shadow: none; }
+.deckgrid { display: grid; grid-template-columns: 24px repeat(13, 30px); gap: 5px 4px; align-items: center; width: max-content; }
+.deckgrid .rl { font: 11px var(--mono); color: var(--felt-muted); text-align: right; padding-right: 2px; }
+.flat { display: flex; flex-wrap: wrap; gap: 4px; }
+.flat .ix { display: flex; flex-direction: column; align-items: center; gap: 2px; font: 10px var(--mono); color: var(--felt-muted); }
+.player-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.seat { background: rgba(0,0,0,.2); border-radius: 10px; padding: 10px 12px; min-width: 0; border: 1px solid transparent; }
+.seat.house { background: rgba(0,0,0,.32); }
+.seat.active { border-color: var(--brass); box-shadow: 0 0 0 1px var(--brass); }
+.seat.win { border-color: var(--brass); background: rgba(224,176,74,.16); }
+.seat .who { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.seat .who b { font: 700 15px var(--display); }
+.seat .tot { font: 600 13px var(--mono); color: var(--felt-muted); font-variant-numeric: tabular-nums; }
+.seat .tot.bust { color: #ffb4a8; }
+.seat .tot.bj { color: var(--brass); }
+.hand { display: flex; gap: 6px; flex-wrap: wrap; min-height: 62px; }
+.badge { font: 700 11px var(--body); text-transform: uppercase; letter-spacing: .05em; padding: 2px 7px; border-radius: 5px; background: var(--brass); color: #2a1e00; }
+.badge.out { background: #ffb4a8; color: #3b0b05; }
+.house-gap { margin-top: 12px; }
+
+.player-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: rgba(0,0,0,.25); border-radius: 10px; padding: 10px 12px; margin-top: 14px; }
+.player-ctl .q { font-weight: 600; margin-right: 6px; }
+.player-ctl button { background: var(--felt-ink); color: var(--felt-deep); border-color: transparent; font-weight: 600; }
+.player-ctl button.ghosty { background: transparent; color: var(--felt-ink); border-color: var(--felt-muted); font-weight: 500; }
+.player-ctl input { background: rgba(255,255,255,.95); color: #18211d; border-color: transparent; width: 130px; }
+.answers { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--felt-muted); }
+.answers code { background: rgba(0,0,0,.28); color: var(--felt-ink); padding: 1px 6px; border-radius: 4px; font: 12px var(--mono); }
+
+.player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; }
+.player input[type=range] { flex: 1 1 160px; accent-color: var(--brass); }
+.player .count { font: 12px var(--mono); color: var(--felt-muted); font-variant-numeric: tabular-nums; min-width: 9ch; }
+.player button { background: rgba(255,255,255,.1); color: var(--felt-ink); border-color: rgba(255,255,255,.25); padding: 5px 10px; }
+.stepinfo { font: 13px/1.5 var(--mono); color: var(--felt-ink); background: rgba(0,0,0,.25); border-radius: 8px; padding: 8px 10px; }
+.stepinfo .k { color: var(--brass); }
+
+.console { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font: 13px/1.55 var(--mono);
+  white-space: pre-wrap; word-break: break-word; max-height: 460px; overflow: auto; min-width: 0; }
+.console .p { color: var(--muted); }
+.console .a { color: var(--act); font-weight: 600; }
+.console .e { color: var(--err); }
+.console .hd { display: block; color: var(--muted); font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .08em; margin: 10px 0 4px; }
+.console .hd:first-child { margin-top: 0; }
+.console-input { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.console-input input { flex: 1 1 180px; font-family: var(--mono); }
+
+.code { background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; overflow: auto; max-height: 560px; font: 12.5px/1.6 var(--mono); }
+.code table { border-collapse: collapse; width: 100%; }
+.code td { padding: 0 10px; vertical-align: top; white-space: pre; }
+.code td.n { text-align: right; color: var(--muted); user-select: none; width: 1%; border-right: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.code tr.e td { background: var(--err-bg); }
+.code tr.e td.n { color: var(--err); font-weight: 600; }
+.code tr.w td.n { color: var(--warn); font-weight: 600; box-shadow: inset 3px 0 0 var(--warn); }
+.code tr.focus td { outline: 2px solid var(--act); outline-offset: -2px; }
+
+.ex { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ex th, .ex td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ex th { font: 600 12px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ex td.c { font-family: var(--mono); word-break: break-word; }
+.res { font: 600 12px var(--body); padding: 2px 8px; border-radius: 5px; white-space: nowrap; }
+.res.pass { background: var(--ok-bg); color: var(--ok); }
+.res.fail, .res.error, .res.missing { background: var(--err-bg); color: var(--err); }
+.cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+@media (max-width: 640px) { .cmp { grid-template-columns: 1fr; } }
+.cmp pre { margin: 0; padding: 8px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; font: 12px/1.45 var(--mono); white-space: pre-wrap; word-break: break-word; }
+.cmp b { font: 600 11px var(--body); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.summary { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.empty { color: var(--muted); font-size: 14px; }
+.foot { margin-top: 26px; font-size: 13px; color: var(--muted); max-width: 80ch; }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Blackjack Code Visualizer</h1>
+      <p class="sub">COMP 202 Assignment 3. Add your <code>blackjack.py</code> and <code>shuffle_deck.py</code> to watch your own functions build, shuffle and deal the deck, play the hands and pick the winners. Your code runs only in this browser; it is not uploaded or saved anywhere else.</p>
+    </div>
+    <span class="pill load" id="rt"><span class="dot"></span><span id="rtText">Loading Python…</span></span>
+  </header>
+
+  <div class="grid">
+    <aside class="rail">
+      <section class="box" aria-labelledby="filesH">
+        <h2 id="filesH">Your files</h2>
+        <div class="slot">
+          <span class="name">blackjack.py</span>
+          <label class="btn small" for="f_bj">Choose</label>
+          <input id="f_bj" type="file" accept=".py,text/x-python,text/plain" hidden>
+          <span class="meta" id="m_bj">Not added yet</span>
+        </div>
+        <div class="slot">
+          <span class="name">shuffle_deck.py</span>
+          <label class="btn small" for="f_sd">Choose</label>
+          <input id="f_sd" type="file" accept=".py,text/x-python,text/plain" hidden>
+          <span class="meta" id="m_sd">Not added yet</span>
+        </div>
+        <div class="drop" id="drop">Or drop both files here</div>
+      </section>
+
+      <section class="box" aria-labelledby="runH">
+        <h2 id="runH">Run</h2>
+        <div class="seg" role="group" aria-label="What to run">
+          <button id="mode_steps" aria-pressed="true">Step by step</button>
+          <button id="mode_game" aria-pressed="false">run_game()</button>
+          <button id="mode_examples" aria-pressed="false">Handout examples</button>
+        </div>
+        <div class="row">
+          <label class="field" for="seed">Seed<input id="seed" type="number" value="202" step="1"></label>
+          <label class="field" for="players" id="playersField">Players
+            <select id="players"><option>1</option><option selected>2</option><option>3</option><option>4</option><option>5</option><option>6</option></select>
+          </label>
+          <button class="primary" id="runBtn" disabled>Run my code</button>
+        </div>
+        <p class="hint" id="modeHint">Calls your functions one at a time, in the order run_game() uses them, with <code>random.seed(seed)</code> before the shuffle.</p>
+      </section>
+
+      <section class="box" aria-labelledby="probH">
+        <h2 id="probH">Problems</h2>
+        <div id="problems"><p class="empty">Nothing to report yet. Problems in your code show here after a run.</p></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="tabs" role="tablist" aria-label="Views">
+        <button role="tab" id="t_table" aria-selected="true">Table</button>
+        <button role="tab" id="t_console" aria-selected="false">Console</button>
+        <button role="tab" id="t_code" aria-selected="false">Code</button>
+      </div>
+      <div id="view"></div>
+    </main>
+  </div>
+
+  <p class="foot">This page only runs and shows your code. It holds no solution code. The Handout examples check uses only the examples printed in the assignment PDF, with the TA's correction for Question 7. Passing them does not mean the private autograder tests will pass.</p>
+</div>
+
+<script type="text/plain" id="harness">import sys, json, ast, traceback, builtins, random, os, shutil
+
+# Never cache compiled student files: a re-upload with the same size and
+# timestamp would otherwise run the old code.
+sys.dont_write_bytecode = True
+
+STUDENT_DIR = '/student'
+LINE_LIMIT = 1000000
+MODULES = ('blackjack', 'shuffle_deck')
+REQUIRED = {
+    'blackjack.py': ['face_value', 'ace_value', 'initialize_deck', 'deal_card',
+                     'deal_deck', 'card_value', 'cards_value', 'cheat',
+                     'house_play', 'play', 'is_cheater', 'identify_winners',
+                     'run_game'],
+    'shuffle_deck.py': ['shuffle_deck'],
+}
+
+
+class NeedInput(Exception):
+    def __init__(self, prompt):
+        Exception.__init__(self, prompt)
+        self.prompt = prompt
+
+
+class TooLong(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- running
+_count = [0]
+
+
+def _local(frame, event, arg):
+    if event == 'line':
+        _count[0] += 1
+        if _count[0] > LINE_LIMIT:
+            raise TooLong()
+    return _local
+
+
+def _global(frame, event, arg):
+    if frame.f_code.co_filename.startswith(STUDENT_DIR):
+        return _local
+    return None
+
+
+class Recorder:
+    """Collects everything printed, prompted and answered, in order."""
+
+    def __init__(self, answers):
+        self.items = []
+        self.answers = list(answers)
+        self.used = 0
+
+    def write(self, text):
+        if not text:
+            return 0
+        if self.items and self.items[-1][0] == 'out':
+            self.items[-1][1] += text
+        else:
+            self.items.append(['out', text])
+        return len(text)
+
+    def flush(self):
+        pass
+
+    def input(self, prompt=''):
+        prompt = str(prompt)
+        self.items.append(['prompt', prompt])
+        if self.used < len(self.answers):
+            answer = self.answers[self.used]
+            self.used += 1
+            self.items.append(['in', answer])
+            return answer
+        raise NeedInput(prompt)
+
+    def text(self):
+        out = ''
+        for kind, value in self.items:
+            out += value + ('\n' if kind == 'in' else '')
+        return out
+
+
+def short(name):
+    return os.path.basename(name) if name else name
+
+
+def fmt_error(exc, stage=None):
+    if isinstance(exc, TooLong):
+        etype, message = 'TooLongError', (
+            'Your code ran more than %s lines without finishing. '
+            'It may be stuck in a loop that never ends.' % format(LINE_LIMIT, ','))
+    elif isinstance(exc, NeedInput):
+        etype, message = 'InputError', (
+            'Your code asked for input here: %r. No answer was expected '
+            'at this point.' % exc.prompt)
+    else:
+        etype, message = type(exc).__name__, str(exc)
+    frames = []
+    for fr in traceback.extract_tb(exc.__traceback__):
+        if fr.filename.startswith(STUDENT_DIR):
+            frames.append({'file': short(fr.filename), 'line': fr.lineno,
+                           'func': fr.name, 'code': (fr.line or '').strip()})
+    message = message.replace(STUDENT_DIR + '/', '')
+    info = {'type': etype, 'message': message, 'frames': frames, 'stage': stage}
+    if isinstance(exc, SyntaxError):
+        info['message'] = exc.msg
+        if exc.filename and exc.filename.startswith(STUDENT_DIR):
+            info['frames'] = [{'file': short(exc.filename), 'line': exc.lineno,
+                               'func': None, 'code': (exc.text or '').rstrip('\n'),
+                               'offset': exc.offset}]
+    if info['frames']:
+        info['file'] = info['frames'][-1]['file']
+        info['line'] = info['frames'][-1]['line']
+    lines = []
+    if info['frames']:
+        lines.append('Traceback (most recent call last):')
+        for f in info['frames']:
+            where = '  File "%s", line %s' % (f['file'], f['line'])
+            if f.get('func'):
+                where += ', in ' + f['func']
+            lines.append(where)
+            if f['code']:
+                lines.append('    ' + f['code'].strip())
+                if f.get('offset'):
+                    indent = len(f['code']) - len(f['code'].lstrip())
+                    lines.append('    ' + ' ' * max(0, f['offset'] - 1 - indent) + '^')
+    lines.append('%s: %s' % (etype, info['message']))
+    info['text'] = '\n'.join(lines)
+    return info
+
+
+def call(fn, args, rec, stage):
+    """Run one student function with output capture and the loop guard."""
+    old_out, old_in = sys.stdout, builtins.input
+    sys.stdout, builtins.input = rec, rec.input
+    _count[0] = 0
+    sys.settrace(_global)
+    try:
+        return {'ok': True, 'value': fn(*args)}
+    except NeedInput as e:
+        return {'ok': False, 'need': e.prompt}
+    except BaseException as e:
+        return {'ok': False, 'error': fmt_error(e, stage)}
+    finally:
+        sys.settrace(None)
+        sys.stdout, builtins.input = old_out, old_in
+
+
+def load(rec):
+    for name in MODULES:
+        sys.modules.pop(name, None)
+    if STUDENT_DIR not in sys.path:
+        sys.path.insert(0, STUDENT_DIR)
+    import importlib
+    importlib.invalidate_caches()
+
+    def do_import():
+        return importlib.import_module('blackjack')
+    res = call(do_import, (), rec, 'import')
+    if 'need' in res:
+        res = {'ok': False, 'error': {
+            'type': 'InputError', 'stage': 'import', 'frames': [],
+            'message': 'Your file asked for input while it was being imported '
+                       '(prompt %r). Code in the main body runs as soon as the '
+                       'file is imported.' % res['need'],
+            'text': 'InputError: input() was called while importing blackjack.py '
+                    '(prompt %r)' % res['need']}}
+    return res
+
+
+# ---------------------------------------------------------------- helpers
+def is_card_list(x):
+    return isinstance(x, list) and all(isinstance(c, str) for c in x)
+
+
+def is_nested(x):
+    return isinstance(x, list) and len(x) > 0 and all(is_card_list(r) for r in x)
+
+
+def safe_totals(bj, hands):
+    totals = []
+    fn = getattr(bj, 'cards_value', None)
+    for hand in hands:
+        if fn is None or not isinstance(hand, list):
+            totals.append(None)
+            continue
+        res = call(fn, (list(hand),), Recorder([]), 'totals')
+        v = res.get('value') if res.get('ok') else None
+        totals.append(v if isinstance(v, (int, float)) and not isinstance(v, bool) else None)
+    return totals
+
+
+def snap_hands(hands):
+    return [list(h) if isinstance(h, list) else repr(h) for h in hands]
+
+
+# ---------------------------------------------------------------- stages
+def run_steps(cfg):
+    seed, players = int(cfg.get('seed', 202)), int(cfg.get('players', 2))
+    answers = cfg.get('answers', [])
+    out = {'mode': 'steps', 'stages': {}}
+    rec = Recorder([])
+    res = load(rec)
+    out['importOutput'] = rec.text()
+    if not res['ok']:
+        out['importError'] = res['error']
+        return out
+    bj = res['value']
+    st = out['stages']
+
+    missing = [n for n in REQUIRED['blackjack.py'] if not callable(getattr(bj, n, None))]
+    out['missing'] = missing
+
+    # 1. initialize_deck
+    if 'initialize_deck' in missing:
+        st['deck'] = {'status': 'missing'}
+        return out
+    rec = Recorder([])
+    res = call(bj.initialize_deck, (), rec, 'initialize_deck')
+    s = {'output': rec.text()}
+    st['deck'] = s
+    if not res['ok']:
+        s.update(status='error', error=res.get('error'))
+        return out
+    deck0 = res['value']
+    s['value'] = deck0 if is_nested(deck0) else None
+    s['repr'] = repr(deck0)[:400]
+    s['status'] = 'ok' if is_nested(deck0) else 'shape'
+    if not is_nested(deck0):
+        return out
+
+    # 2. shuffle (through the name shuffle_deck as blackjack.py sees it)
+    shuffle_fn = getattr(bj, 'shuffle_deck', None)
+    s = {}
+    st['shuffle'] = s
+    if not callable(shuffle_fn):
+        s['status'] = 'missing'
+        return out
+    fresh = call(bj.initialize_deck, (), Recorder([]), 'initialize_deck')['value']
+    start = [list(r) for r in fresh]
+    calls, snaps = [], []
+    real = random.randint
+
+    def watched(a, b):
+        snaps.append([list(r) for r in fresh])
+        r = real(a, b)
+        calls.append([a, b, r])
+        return r
+    random.seed(seed)
+    random.randint = watched
+    rec = Recorder([])
+    try:
+        res = call(shuffle_fn, (fresh,), rec, 'shuffle_deck')
+    finally:
+        random.randint = real
+    s['output'] = rec.text()
+    s['start'] = start
+    s['calls'] = calls
+    # snaps[k] = state before call k; state after swap k = snaps[k+1] or final
+    after = snaps[1:] + [[list(r) for r in fresh]]
+    s['frames'] = after if len(calls) <= 120 else after[:120]
+    s['framesCut'] = len(calls) > 120
+    if not res['ok']:
+        s.update(status='error', error=res.get('error'))
+        return out
+    flat = res['value']
+    s['repr'] = repr(flat)[:400]
+    if not is_card_list(flat):
+        s['status'] = 'shape'
+        return out
+    s['value'] = flat
+    s['status'] = 'ok'
+
+    # 3. deal
+    s = {}
+    st['deal'] = s
+    if 'deal_deck' in missing:
+        s['status'] = 'missing'
+        return out
+    deck = list(flat)
+    events = []
+    real_deal = getattr(bj, 'deal_card', None)
+    if callable(real_deal):
+        def deal_rec(d, hand, *rest):
+            before = len(hand) if isinstance(hand, list) else None
+            r = real_deal(d, hand, *rest)
+            card = hand[-1] if isinstance(hand, list) and before is not None and len(hand) > before else None
+            events.append([id(hand), card])
+            return r
+        bj.deal_card = deal_rec
+    rec = Recorder([])
+    res = call(bj.deal_deck, (deck, players), rec, 'deal_deck')
+    s['output'] = rec.text()
+    if not res['ok']:
+        s.update(status='error', error=res.get('error'))
+        return out
+    hands = res['value']
+    s['repr'] = repr(hands)[:400]
+    if not (isinstance(hands, list) and all(isinstance(h, list) for h in hands)):
+        s['status'] = 'shape'
+        return out
+    ids = [id(h) for h in hands]
+
+    def map_events(evs):
+        mapped = []
+        for hid, card in evs:
+            mapped.append([ids.index(hid) if hid in ids else -1, card])
+        return mapped
+    s['events'] = map_events(events)
+    s['usedDealCard'] = len(events) > 0
+    s['hands'] = snap_hands(hands)
+    s['deckLeft'] = len(deck)
+    s['deckTop'] = deck[:6]
+    s['totals'] = safe_totals(bj, hands)
+    s['status'] = 'ok'
+
+    # 4. play
+    s = {}
+    st['play'] = s
+    if 'play' in missing:
+        s['status'] = 'missing'
+        return out
+    events.clear()
+    rec = Recorder(answers)
+    res = call(bj.play, (deck, hands), rec, 'play')
+    s['items'] = rec.items
+    s['events'] = map_events(events)
+    s['hands'] = snap_hands(hands)
+    s['totals'] = safe_totals(bj, hands)
+    s['deckLeft'] = len(deck)
+    s['used'] = rec.used
+    s['extraAnswers'] = len(answers) - rec.used
+    if 'need' in res:
+        s['status'] = 'waiting'
+        s['prompt'] = res['need']
+        return out
+    if not res['ok']:
+        s.update(status='error', error=res.get('error'))
+        return out
+    s['status'] = 'ok'
+
+    # 5. winners
+    s = {}
+    st['winners'] = s
+    if 'identify_winners' in missing:
+        s['status'] = 'missing'
+        return out
+    cheat_fn = getattr(bj, 'is_cheater', None)
+    flags = []
+    for i, h in enumerate(hands):
+        if callable(cheat_fn) and i < len(hands) - 1:
+            r = call(cheat_fn, (list(h),), Recorder([]), 'is_cheater')
+            flags.append(r.get('value') if r.get('ok') else None)
+        else:
+            flags.append(None)
+    s['cheaterFlags'] = flags
+    rec = Recorder([])
+    res = call(bj.identify_winners, (hands,), rec, 'identify_winners')
+    s['output'] = rec.text()
+    if not res['ok']:
+        s.update(status='error', error=res.get('error'))
+        return out
+    s['value'] = res['value'] if isinstance(res['value'], list) else None
+    s['repr'] = repr(res['value'])[:400]
+    s['status'] = 'ok'
+    return out
+
+
+def run_game(cfg):
+    seed, answers = int(cfg.get('seed', 202)), cfg.get('answers', [])
+    out = {'mode': 'game'}
+    rec = Recorder([])
+    res = load(rec)
+    out['importOutput'] = rec.text()
+    if not res['ok']:
+        out['importError'] = res['error']
+        return out
+    bj = res['value']
+    if not callable(getattr(bj, 'run_game', None)):
+        out['status'] = 'missing'
+        return out
+    seen = {}
+    real_deal_deck = getattr(bj, 'deal_deck', None)
+    if callable(real_deal_deck):
+        def deal_deck_rec(*args):
+            r = real_deal_deck(*args)
+            seen['hands'] = r
+            return r
+        bj.deal_deck = deal_deck_rec
+    random.seed(seed)
+    rec = Recorder(answers)
+    res = call(bj.run_game, (), rec, 'run_game')
+    out['items'] = rec.items
+    out['used'] = rec.used
+    hands = seen.get('hands')
+    if isinstance(hands, list) and all(isinstance(h, list) for h in hands):
+        out['hands'] = snap_hands(hands)
+        out['totals'] = safe_totals(bj, hands)
+    if 'need' in res:
+        out['status'] = 'waiting'
+        out['prompt'] = res['need']
+    elif not res['ok']:
+        out['status'] = 'error'
+        out['error'] = res['error']
+    else:
+        out['status'] = 'ok'
+    return out
+
+
+# ---------------------------------------------------------------- handout examples
+def run_examples(cfg):
+    out = {'mode': 'examples', 'rows': []}
+    rec = Recorder([])
+    res = load(rec)
+    if not res['ok']:
+        out['importError'] = res['error']
+        return out
+    bj = res['value']
+    rows = out['rows']
+
+    def check(q, label, fn_name, thunk, expected, printed=None):
+        fn = getattr(bj, fn_name, None)
+        row = {'q': q, 'call': label, 'expected': expected}
+        if not callable(fn):
+            row.update(status='missing', got='%s() is not defined' % fn_name)
+            rows.append(row)
+            return
+        r = Recorder([])
+        res = call(thunk, (), r, fn_name)
+        if not res['ok']:
+            row.update(status='error', got=res.get('error', {}).get('text', 'asked for input'))
+        else:
+            got = repr(res['value'])
+            if printed is not None:
+                got = (r.text().rstrip('\n') + '\n' + got) if r.text() else got
+            row['got'] = got
+            row['status'] = 'pass' if got == expected else 'fail'
+        rows.append(row)
+
+    check('Q1', "face_value('Queen')", 'face_value', lambda: bj.face_value('Queen'), '12')
+    check('Q1', 'ace_value()', 'ace_value', lambda: bj.ace_value(), '11')
+    check('Q1', 'ace_value(False)', 'ace_value', lambda: bj.ace_value(False), '1')
+    check('Q2', 'len(initialize_deck())', 'initialize_deck', lambda: len(bj.initialize_deck()), '4')
+    check('Q2', 'initialize_deck()[0][0:3]', 'initialize_deck', lambda: bj.initialize_deck()[0][0:3],
+          "['AceOfHearts', '2OfHearts', '3OfHearts']")
+    check('Q2', 'initialize_deck()[3][12]', 'initialize_deck', lambda: bj.initialize_deck()[3][12], "'KingOfSpades'")
+
+    def q3():
+        random.seed(202)
+        d = bj.shuffle_deck(bj.initialize_deck())
+        return [len(d), d[0:4]]
+    check('Q3', 'random.seed(202); deck = shuffle_deck(initialize_deck()); [len(deck), deck[0:4]]',
+          'shuffle_deck', q3, "[52, ['7OfClubs', '4OfSpades', '6OfDiamonds', '7OfDiamonds']]")
+
+    def q4():
+        deck, hand = ['4OfClubs', '10OfHearts'], ['AceOfSpades']
+        bj.deal_card(deck, hand)
+        return [hand, deck]
+    check('Q4', "deal_card(['4OfClubs', '10OfHearts'], ['AceOfSpades']) → [hand, deck]",
+          'deal_card', q4, "[['AceOfSpades', '4OfClubs'], ['10OfHearts']]")
+
+    def q5():
+        deck = ['5OfHearts', 'KingOfClubs', '9OfSpades', 'AceOfDiamonds',
+                '7OfHearts', '8OfClubs', '2OfSpades', '3OfHearts']
+        return [bj.deal_deck(deck, 2), deck]
+    check('Q5', 'deal_deck(deck, 2) → [hands, deck]', 'deal_deck', q5,
+          "[[['5OfHearts', 'AceOfDiamonds'], ['KingOfClubs', '7OfHearts'], "
+          "['9OfSpades', '8OfClubs']], ['2OfSpades', '3OfHearts']]")
+    check('Q6', "card_value('JackOfSpades')", 'card_value', lambda: bj.card_value('JackOfSpades'), '11')
+    check('Q6', "card_value('19Of3OfClubs')", 'card_value', lambda: bj.card_value('19Of3OfClubs'), '19')
+    for hand, exp in [(['3OfClubs', 'JackOfSpades'], '14'), (['AceOfHearts', '8OfClubs'], '19'),
+                      (['AceOfHearts', 'KingOfClubs'], '14'), (['AceOfHearts', 'AceOfSpades'], '12'),
+                      (['AceOfHearts', 'AceOfSpades', 'KingOfClubs'], '15')]:
+        check('Q6', 'cards_value(%r)' % hand, 'cards_value', lambda h=hand: bj.cards_value(list(h)), exp)
+    for hand, exp in [(['8OfDiamonds', '2OfHearts', '7OfClubs'], "['8OfDiamonds', '2OfHearts', '11Of7OfClubs']"),
+                      (['2OfHearts', '3OfClubs'], "['2OfHearts', '19Of3OfClubs']"),
+                      (['KingOfClubs', '5OfHearts', 'AceOfSpades'], "['KingOfClubs', '5OfHearts', '3OfAceOfSpades']")]:
+        def q7(h=hand):
+            h = list(h)
+            bj.cheat(h)
+            return h
+        check('Q7', 'hand = %r; cheat(hand); hand' % hand, 'cheat', q7, exp)
+
+    def q8a():
+        deck, hh = ['9OfClubs', '4OfHearts', 'QueenOfSpades'], ['2OfHearts', '3OfClubs']
+        bj.house_play(deck, hh)
+        return hh
+
+    def q8b():
+        deck, hh = ['9OfClubs'], ['10OfHearts', '7OfClubs']
+        bj.house_play(deck, hh)
+        return hh
+    check('Q8', "house_play(['9OfClubs', '4OfHearts', 'QueenOfSpades'], ['2OfHearts', '3OfClubs'])",
+          'house_play', q8a, "['2OfHearts', '3OfClubs', '9OfClubs', '4OfHearts']")
+    check('Q8', "house_play(['9OfClubs'], ['10OfHearts', '7OfClubs'])", 'house_play', q8b,
+          "['10OfHearts', '7OfClubs']")
+
+    # Q9: compare the whole transcript
+    q9_expected = '\n'.join([
+        'Player 1:', "Your cards: ['5OfHearts', '7OfClubs'] (total: 12)", 'Hit or Stand? hIt',
+        "Your cards: ['5OfHearts', '7OfClubs', '3OfHearts'] (total: 15)", 'Hit or Stand? fold',
+        'Select a valid option:', 'Hit or Stand? STAND', 'Player 2:',
+        "Your cards: ['AceOfSpades', 'QueenOfHearts'] (total: 13)", 'Hit or Stand? hit',
+        "Your cards: ['AceOfSpades', 'QueenOfHearts', '9OfSpades'] (total: 22)", 'Bust!',
+        'Player 3:', "Your cards: ['2OfDiamonds', '3OfSpades'] (total: 5)", 'Hit or Stand? cheat',
+        "House: ['JackOfClubs', '4OfDiamonds', '2OfClubs'] (total: 17)"])
+    row = {'q': 'Q9', 'call': 'play(deck, hands) with answers hIt, fold, STAND, hit, cheat',
+           'expected': q9_expected}
+    if callable(getattr(bj, 'play', None)):
+        deck = ['3OfHearts', '9OfSpades', '2OfClubs', 'KingOfDiamonds']
+        hands = [['5OfHearts', '7OfClubs'], ['AceOfSpades', 'QueenOfHearts'],
+                 ['2OfDiamonds', '3OfSpades'], ['JackOfClubs', '4OfDiamonds']]
+        r = Recorder(['hIt', 'fold', 'STAND', 'hit', 'cheat'])
+        res = call(bj.play, (deck, hands), r, 'play')
+        if 'need' in res:
+            row.update(status='fail', got=r.text() + '\n(asked for more input than the example gives)')
+        elif not res['ok']:
+            row.update(status='error', got=res['error']['text'])
+        else:
+            got = r.text().rstrip('\n')
+            row.update(got=got, status='pass' if got == q9_expected else 'fail')
+    else:
+        row.update(status='missing', got='play() is not defined')
+    rows.append(row)
+
+    check('Q10', "is_cheater(['8OfDiamonds', '2OfHearts', '7OfClubs'])", 'is_cheater',
+          lambda: bj.is_cheater(['8OfDiamonds', '2OfHearts', '7OfClubs']), 'False')
+    check('Q10', "is_cheater(['8OfDiamonds', '2OfHearts', '11Of7OfClubs'])", 'is_cheater',
+          lambda: bj.is_cheater(['8OfDiamonds', '2OfHearts', '11Of7OfClubs']), 'True')
+    for hands, exp in [
+        ([['5OfHearts', '7OfClubs', '3OfHearts'], ['AceOfSpades', 'QueenOfHearts', '9OfSpades'],
+          ['2OfDiamonds', '19Of3OfSpades'], ['JackOfClubs', '4OfDiamonds', '2OfClubs']],
+         'Player 3, you have been caught cheating. Calling security!\nHouse has won! Congratulations!\n[15, -1, -1, 17]'),
+        ([['10OfHearts', '9OfClubs'], ['KingOfSpades', '5OfHearts', '8OfClubs'],
+          ['10OfSpades', '6OfHearts', '3OfClubs']],
+         'Player 1, House have won! Congratulations!\n[19, -1, 19]'),
+        ([['10OfHearts', 'KingOfClubs'], ['10OfSpades', 'QueenOfHearts', '9OfClubs']],
+         'No winners this round.\n[-1, -1]')]:
+        check('Q11', 'identify_winners(%r)' % hands, 'identify_winners',
+              lambda h=hands: bj.identify_winners([list(x) for x in h]), exp, printed=True)
+    return out
+
+
+# ---------------------------------------------------------------- rule checks
+def rule_checks(files):
+    notes = []
+
+    def add(file, line, kind, text):
+        notes.append({'file': file, 'line': line, 'kind': kind, 'text': text})
+
+    for fname, src in files.items():
+        lines = src.split('\n')
+        try:
+            tree = ast.parse(src)
+        except SyntaxError:
+            continue
+        head = '\n'.join(l for l in lines[:12] if l.strip().startswith('#'))
+        if not any(ch.isdigit() for ch in head) or len(''.join(c for c in head if c.isdigit())) < 9:
+            add(fname, 1, 'rule', 'No name and student ID comment found at the top of the file.')
+        defined = {}
+        imported = {}
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                if node.name in defined:
+                    add(fname, node.lineno, 'rule', '%s() is defined twice (first on line %d). '
+                        'Only the last definition is used.' % (node.name, defined[node.name]))
+                if node.name in imported:
+                    add(fname, node.lineno, 'rule', 'This defines %s(), the same name imported on '
+                        'line %d. The imported %s() is no longer used.' % (node.name, imported[node.name], node.name))
+                defined[node.name] = node.lineno
+            elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                for alias in node.names:
+                    imported[alias.asname or alias.name] = node.lineno
+                mod = node.module if isinstance(node, ast.ImportFrom) else node.names[0].name
+                ok = {'blackjack.py': ('shuffle_deck', 'random'), 'shuffle_deck.py': ('random',)}[fname]
+                if mod not in ok:
+                    add(fname, node.lineno, 'rule', 'Imports %s. Only %s is expected in this file.'
+                        % (mod, ' and '.join(ok)))
+            elif isinstance(node, (ast.Expr, ast.Assign, ast.AugAssign, ast.If, ast.For, ast.While)):
+                is_doc = isinstance(node, ast.Expr) and isinstance(getattr(node, 'value', None), ast.Constant) \
+                    and isinstance(node.value.value, str)
+                if not is_doc and any(isinstance(n, ast.Call) for n in ast.walk(node)):
+                    add(fname, node.lineno, 'rule', 'A function is called in the main body (outside '
+                        'any function). The autograder fails files that do this.')
+                if fname == 'shuffle_deck.py' and not is_doc:
+                    add(fname, node.lineno, 'rule', 'shuffle_deck.py should hold only the '
+                        'shuffle_deck() function (plus import random).')
+        for name in REQUIRED[fname]:
+            if name not in defined:
+                add(fname, None, 'rule', '%s() is not defined in this file.' % name)
+
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Pass):
+                add(fname, node.lineno, 'rule', 'Uses pass, which this assignment does not allow.')
+            if isinstance(node, ast.Call):
+                f = node.func
+                if isinstance(f, ast.Name) and f.id in ('exit', 'quit'):
+                    add(fname, node.lineno, 'rule', 'Uses %s(), which this assignment does not allow.' % f.id)
+                if isinstance(f, ast.Attribute) and isinstance(f.value, ast.Name) and f.value.id == 'random' \
+                        and f.attr not in ('randint',):
+                    add(fname, node.lineno, 'rule', 'Uses random.%s(). Only random.randint() is allowed.' % f.attr)
+            if isinstance(node, (ast.Dict, ast.Set, ast.ListComp, ast.DictComp, ast.SetComp,
+                                 ast.GeneratorExp, ast.Lambda, ast.Try, ast.With, ast.ClassDef)):
+                label = {ast.Dict: 'a dictionary', ast.Set: 'a set', ast.ListComp: 'a list comprehension',
+                         ast.DictComp: 'a dictionary comprehension', ast.SetComp: 'a set comprehension',
+                         ast.GeneratorExp: 'a generator expression', ast.Lambda: 'lambda',
+                         ast.Try: 'try/except', ast.With: 'with', ast.ClassDef: 'a class'}[type(node)]
+                add(fname, node.lineno, 'note', 'Uses %s. Check that it was taught before Lecture 15.' % label)
+            if isinstance(node, (ast.Break, ast.Continue)):
+                add(fname, node.lineno, 'note', 'Uses %s. The Ed answers say to avoid it.'
+                    % ('break' if isinstance(node, ast.Break) else 'continue'))
+        for node in tree.body:
+            if isinstance(node, ast.FunctionDef):
+                for sub in ast.walk(node):
+                    if isinstance(sub, ast.Constant) and type(sub.value) is int and sub.value in (13, 17, 21):
+                        add(fname, sub.lineno, 'rule', 'The number %d is written directly in %s(). '
+                            'Use a constant instead.' % (sub.value, node.name))
+                if node.name == 'is_cheater':
+                    for sub in ast.walk(node):
+                        if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute) \
+                                and sub.func.attr in ('count', 'find', 'replace', 'index'):
+                            add(fname, sub.lineno, 'rule', 'is_cheater() uses .%s(). The question asks you '
+                                'to examine the characters yourself.' % sub.func.attr)
+                        if isinstance(sub, ast.Compare) and any(isinstance(o, (ast.In, ast.NotIn)) for o in sub.ops):
+                            add(fname, sub.lineno, 'rule', 'is_cheater() uses the in operator, which this '
+                                'question does not allow on strings.')
+                if not (node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant)
+                        and isinstance(node.body[0].value.value, str)):
+                    add(fname, node.lineno, 'style', '%s() has no docstring.' % node.name)
+        long_lines = [i + 1 for i, l in enumerate(lines) if len(l) > 79]
+        for n in long_lines:
+            add(fname, n, 'style', 'Line is %d characters long (limit 79).' % len(lines[n - 1]))
+    notes.sort(key=lambda n: ({'rule': 0, 'note': 1, 'style': 2}[n['kind']], n['file'], n['line'] or 0))
+    return notes
+
+
+def main(cfg_json):
+    cfg = json.loads(cfg_json)
+    files = cfg.get('files', {})
+    os.makedirs(STUDENT_DIR, exist_ok=True)
+    for name in os.listdir(STUDENT_DIR):
+        path = os.path.join(STUDENT_DIR, name)
+        if name == '__pycache__':
+            shutil.rmtree(path, ignore_errors=True)
+        elif name.endswith('.py'):
+            os.remove(path)
+    for name, src in files.items():
+        with open(os.path.join(STUDENT_DIR, name), 'w') as f:
+            f.write(src)
+    for name in list(sys.modules):
+        if name in MODULES:
+            del sys.modules[name]
+    mode = cfg.get('mode', 'steps')
+    if mode == 'game':
+        out = run_game(cfg)
+    elif mode == 'examples':
+        out = run_examples(cfg)
+    else:
+        out = run_steps(cfg)
+    if cfg.get('checks'):
+        out['checks'] = rule_checks(files)
+    return json.dumps(out)
+</script>
+<script src="py/stdlib.js"></script>
+<script src="py/pyodide.js"></script>
+<script>
+(function () {
+  'use strict';
+  var STAGES = [
+    { key: 'deck', fn: 'initialize_deck', label: 'initialize_deck' },
+    { key: 'shuffle', fn: 'shuffle_deck', label: 'shuffle_deck' },
+    { key: 'deal', fn: 'deal_deck', label: 'deal_deck' },
+    { key: 'play', fn: 'play', label: 'play' },
+    { key: 'winners', fn: 'identify_winners', label: 'identify_winners' }
+  ];
+  var SUITS = { Hearts: ['♥', true], Diamonds: ['♦', true], Clubs: ['♣', false], Spades: ['♠', false] };
+  var RANKS = { Ace: 'A', Jack: 'J', Queen: 'Q', King: 'K' };
+  var S = {
+    files: {}, real: {}, mode: 'steps', view: 'table', stage: null,
+    answers: [], gameAnswers: [], result: null, examples: null, checks: null,
+    frame: 0, deal: 0, timer: null, codeFile: 'blackjack.py', focusLine: null, py: null, busy: false
+  };
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function store(k, v) { try { localStorage.setItem('bjviz.' + k, JSON.stringify(v)); } catch (e) {} }
+  function recall(k) { try { var v = localStorage.getItem('bjviz.' + k); return v ? JSON.parse(v) : null; } catch (e) { return null; } }
+
+  /* ---------- cards ---------- */
+  function parseCard(c) {
+    if (typeof c !== 'string') return null;
+    var first = c.indexOf('Of'), last = c.lastIndexOf('Of');
+    if (first < 1) return null;
+    var rank = c.slice(0, first), suit = c.slice(last + 2);
+    if (!SUITS[suit]) return null;
+    return { rank: rank, suit: suit, rigged: first !== last };
+  }
+  function cardHTML(c, opts) {
+    opts = opts || {};
+    var cls = 'card' + (opts.mini ? ' mini' : '') + (opts.hot ? ' hot' : '') + (opts.isNew ? ' new' : '');
+    var p = parseCard(c);
+    if (!p) return '<div class="' + cls + ' odd" title="' + esc(c) + '">' + esc(c === null || c === undefined ? 'None' : String(c)).slice(0, 18) + '</div>';
+    var sym = SUITS[p.suit];
+    var r = RANKS[p.rank] || p.rank;
+    return '<div class="' + cls + (sym[1] ? ' red' : '') + (p.rigged ? ' rigged' : '') + '" title="' + esc(c) + '" role="img" aria-label="' + esc(c) + '">' +
+      '<span class="r">' + esc(r) + '</span><span class="s">' + sym[0] + '</span></div>';
+  }
+  function seatName(i, n) { return i === n - 1 ? 'House' : 'Player ' + (i + 1); }
+  function totalClass(t) { return t === null || t === undefined ? '' : t > 21 ? ' bust' : t === 21 ? ' bj' : ''; }
+
+  /* ---------- Python runtime ---------- */
+  function setRuntime(state, text) { var p = $('rt'); p.className = 'pill ' + state; $('rtText').textContent = text; }
+  async function boot() {
+    try {
+      if (typeof loadPyodide !== 'function') throw new Error('The Python runtime file did not load.');
+      // The standard library ships inside py/stdlib.js; hand its bytes to Pyodide when it asks for python_stdlib.zip.
+      var realFetch = window.fetch;
+      window.fetch = function (url, opts) {
+        if (String(url).indexOf('python_stdlib.zip') >= 0 && self.BJVIZ_STDLIB) {
+          var bin = atob(self.BJVIZ_STDLIB), bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return Promise.resolve(new Response(bytes, { status: 200, headers: { 'Content-Type': 'application/octet-stream' } }));
+        }
+        return realFetch.apply(this, arguments);
+      };
+      try {
+        S.py = await loadPyodide({ indexURL: new URL('py/', location.href).href });
+      } finally { window.fetch = realFetch; }
+      S.py.runPython($('harness').textContent);
+      S.main = S.py.globals.get('main');
+      setRuntime('ready', 'Python ready');
+    } catch (e) {
+      setRuntime('fail', 'Python could not start');
+      $('problems').innerHTML = '<div class="err"><div class="head">Python could not start in this browser</div><pre class="tb">' + esc(String(e && e.message || e)) +
+        '</pre><p class="hint">Reload the page. If this keeps happening, try a desktop browser such as Chrome, Edge, Firefox or Safari.</p></div>';
+    }
+    updateRunBtn();
+  }
+  function runPython(cfg) {
+    cfg.files = S.files;
+    var out = S.main(JSON.stringify(cfg));
+    return JSON.parse(out);
+  }
+
+  /* ---------- files ---------- */
+  var SLOT = { 'blackjack.py': ['f_bj', 'm_bj'], 'shuffle_deck.py': ['f_sd', 'm_sd'] };
+  function setFile(slot, name, text) {
+    S.files[slot] = text; S.real[slot] = name;
+    store('files', S.files); store('real', S.real);
+    S.answers = []; S.gameAnswers = []; S.result = null; S.examples = null;
+    showFile(slot);
+    updateRunBtn();
+  }
+  function showFile(slot) {
+    var m = $(SLOT[slot][1]);
+    var text = S.files[slot];
+    if (text === undefined) { m.className = 'meta'; m.textContent = 'Not added yet'; return; }
+    var lines = text.split('\n').length;
+    var real = S.real[slot];
+    if (real && real !== slot) {
+      m.className = 'meta bad';
+      m.textContent = 'Added "' + real + '" (' + lines + ' lines). It runs here as ' + slot + '; on Ed the file must have this exact name.';
+    } else {
+      m.className = 'meta ok';
+      m.textContent = 'Added, ' + lines + ' lines';
+    }
+  }
+  function readInto(slot, file) {
+    var r = new FileReader();
+    r.onload = function () { setFile(slot, file.name, String(r.result).replace(/\r\n?/g, '\n')); autoRun(); };
+    r.readAsText(file);
+  }
+  function guessSlot(name) {
+    var n = name.toLowerCase();
+    if (n.indexOf('shuffle') >= 0) return 'shuffle_deck.py';
+    if (n.indexOf('blackjack') >= 0) return 'blackjack.py';
+    return null;
+  }
+  $('f_bj').addEventListener('change', function (e) { if (e.target.files[0]) readInto('blackjack.py', e.target.files[0]); e.target.value = ''; });
+  $('f_sd').addEventListener('change', function (e) { if (e.target.files[0]) readInto('shuffle_deck.py', e.target.files[0]); e.target.value = ''; });
+  var drop = $('drop');
+  ['dragenter', 'dragover'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (t) { drop.addEventListener(t, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function (e) {
+    var list = Array.prototype.slice.call(e.dataTransfer.files || []);
+    var unknown = [];
+    list.forEach(function (f) {
+      var slot = guessSlot(f.name);
+      if (slot) readInto(slot, f); else unknown.push(f.name);
+    });
+    drop.textContent = unknown.length ? 'Not sure where these go: ' + unknown.join(', ') + '. Use the Choose buttons.' : 'Or drop both files here';
+  });
+  function ready() { return S.main && S.files['blackjack.py'] !== undefined; }
+  function updateRunBtn() { $('runBtn').disabled = !ready() || S.busy; }
+  function autoRun() { if (ready() && S.files['shuffle_deck.py'] !== undefined) run(); }
+
+  /* ---------- modes ---------- */
+  var HINTS = {
+    steps: 'Calls your functions one at a time, in the order run_game() uses them, with <code>random.seed(seed)</code> before the shuffle.',
+    game: 'Runs your <code>run_game()</code> exactly as written. Type each answer in the Console when your code asks for input.',
+    examples: 'Runs the examples printed in the assignment handout and compares your results with them.'
+  };
+  function setMode(m) {
+    S.mode = m;
+    ['steps', 'game', 'examples'].forEach(function (k) { $('mode_' + k).setAttribute('aria-pressed', String(k === m)); });
+    $('playersField').hidden = m !== 'steps';
+    $('modeHint').innerHTML = HINTS[m];
+    if (m === 'game') S.view = 'console';
+    if (m === 'steps') S.view = 'table';
+    if (m === 'examples') S.view = 'table';
+    stopTimer();
+    if (ready()) run(); else render();
+  }
+  ['steps', 'game', 'examples'].forEach(function (k) { $('mode_' + k).addEventListener('click', function () { setMode(k); }); });
+  $('runBtn').addEventListener('click', function () { S.answers = []; S.gameAnswers = []; run(); });
+  $('seed').addEventListener('change', function () { S.answers = []; S.gameAnswers = []; if (ready()) run(); });
+  $('players').addEventListener('change', function () { S.answers = []; if (ready() && S.mode === 'steps') run(); });
+  ['table', 'console', 'code'].forEach(function (v) {
+    $('t_' + v).addEventListener('click', function () { S.view = v; render(); });
+  });
+
+  /* ---------- run ---------- */
+  function run() {
+    if (!ready() || S.busy) return;
+    S.busy = true; updateRunBtn();
+    setRuntime('load', 'Running your code…');
+    setTimeout(function () {
+      try {
+        var seed = parseInt($('seed').value, 10); if (isNaN(seed)) seed = 202;
+        var cfg = { checks: true, seed: seed };
+        if (S.mode === 'steps') { cfg.mode = 'steps'; cfg.players = parseInt($('players').value, 10); cfg.answers = S.answers; }
+        else if (S.mode === 'game') { cfg.mode = 'game'; cfg.answers = S.gameAnswers; }
+        else { cfg.mode = 'examples'; }
+        var r = runPython(cfg);
+        S.checks = r.checks || [];
+        if (S.mode === 'examples') S.examples = r; else S.result = r;
+        pickStage();
+        setRuntime('ready', 'Python ready');
+      } catch (e) {
+        setRuntime('fail', 'The visualizer hit a problem');
+        S.result = { toolError: String(e && e.message || e) };
+      }
+      S.busy = false; updateRunBtn();
+      render();
+    }, 30);
+  }
+  function stageStatus(k) {
+    var r = S.result; if (!r || !r.stages) return null;
+    var s = r.stages[k]; return s ? s.status : null;
+  }
+  function pickStage() {
+    var r = S.result; if (!r || !r.stages) { S.stage = null; return; }
+    var keep = S.stage;
+    var first = null, last = null;
+    STAGES.forEach(function (st) {
+      var s = stageStatus(st.key);
+      if (s) last = st.key;
+      if (!first && s && s !== 'ok') first = st.key;
+    });
+    S.stage = first || last || 'deck';
+    if (keep && stageStatus(keep) === 'ok' && !first && S.answers.length === 0) S.stage = keep;
+    if (stageStatus('play') === 'waiting') S.stage = 'play';
+    if (S.stage === 'shuffle') S.frame = 0;
+    S.deal = 0;
+  }
+
+  /* ---------- problems ---------- */
+  function currentError() {
+    var r = S.mode === 'examples' ? S.examples : S.result;
+    if (!r) return null;
+    if (r.importError) return r.importError;
+    if (r.mode === 'game' && r.status === 'error') return r.error;
+    if (r.stages) {
+      for (var i = 0; i < STAGES.length; i++) { var s = r.stages[STAGES[i].key]; if (s && s.status === 'error') return s.error; }
+    }
+    return null;
+  }
+  function renderProblems() {
+    var box = $('problems');
+    if (S.result && S.result.toolError) {
+      box.innerHTML = '<div class="err"><div class="head">The visualizer could not finish</div><pre class="tb">' + esc(S.result.toolError) + '</pre></div>';
+      return;
+    }
+    var err = currentError();
+    var html = '';
+    if (err) {
+      html += '<div class="err"><div class="head"><span>' + esc(err.type) + (err.line ? ' on line ' + err.line + ' of ' + esc(err.file) : '') + '</span>' +
+        (err.line ? '<button class="small" data-goto="' + esc(err.file) + ':' + err.line + '">Show line</button>' : '') +
+        '</div><pre class="tb">' + esc(err.text) + '</pre></div>';
+    }
+    var checks = S.checks;
+    if (checks && checks.length) {
+      var groups = { rule: [], note: [], style: [] };
+      checks.forEach(function (c) { groups[c.kind].push(c); });
+      var names = { rule: 'Assignment rules', note: 'Check with the course', style: 'Style' };
+      ['rule', 'note', 'style'].forEach(function (k) {
+        if (!groups[k].length) return;
+        var items = groups[k].map(function (c) {
+          var where = c.line ? '<button class="small" data-goto="' + esc(c.file) + ':' + c.line + '">' + esc(c.file.replace('.py', '')) + ':' + c.line + '</button>'
+            : '<span class="tag ' + k + '">' + esc(c.file.replace('.py', '')) + '</span>';
+          return '<li>' + where + '<span>' + esc(c.text) + '</span></li>';
+        }).join('');
+        var open = k !== 'style' ? ' open' : '';
+        html += '<details' + open + '><summary><span class="tag ' + k + '">' + groups[k].length + '</span> ' + names[k] + '</summary><ul class="checks">' + items + '</ul></details>';
+      });
+    }
+    if (!html) html = S.result || S.examples ? '<p class="empty">No errors and no rule warnings in this run.</p>' : '<p class="empty">Nothing to report yet. Problems in your code show here after a run.</p>';
+    box.innerHTML = html;
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-goto]');
+    if (!b) return;
+    var parts = b.getAttribute('data-goto').split(':');
+    S.codeFile = parts[0]; S.focusLine = parseInt(parts[1], 10); S.view = 'code';
+    render();
+  });
+
+  /* ---------- views ---------- */
+  function render() {
+    ['table', 'console', 'code'].forEach(function (v) { $('t_' + v).setAttribute('aria-selected', String(S.view === v)); });
+    renderProblems();
+    var v = $('view');
+    if (S.view === 'console') v.innerHTML = consoleView();
+    else if (S.view === 'code') v.innerHTML = codeView();
+    else if (S.mode === 'examples') v.innerHTML = examplesView();
+    else if (S.mode === 'game') v.innerHTML = gameTable();
+    else v.innerHTML = stepsView();
+    afterRender();
+  }
+
+  function stepsBar() {
+    return '<div class="steps" role="tablist" aria-label="Functions">' + STAGES.map(function (st, i) {
+      var s = stageStatus(st.key) || 'none';
+      var mark = { ok: '✓', error: '!', shape: '!', missing: '!', waiting: '?', none: String(i + 1) }[s];
+      return '<button class="step ' + s + '" data-stage="' + st.key + '" aria-current="' + (S.stage === st.key) + '"><span class="st">' + mark + '</span>' + st.label + '()</button>';
+    }).join('') + '</div>';
+  }
+
+  function demoTable() {
+    var hands = [['5OfHearts', '7OfClubs'], ['AceOfSpades', 'QueenOfHearts'], ['2OfDiamonds', '3OfSpades'], ['JackOfClubs', '4OfDiamonds']];
+    return '<div class="table"><h3>Your table appears here</h3><p class="cap">Add your two files on the left. This example table uses the hands from Question 9 of the handout; with your files, every card you see comes from your own functions.</p>' +
+      seatsHTML(hands, [12, 13, 5, 15], {}) + '</div>';
+  }
+
+  function stepsView() {
+    var r = S.result;
+    if (!r) return demoTable();
+    if (r.toolError) return '<div class="table"><h3>Nothing to show</h3><p class="cap">See Problems on the left.</p></div>';
+    if (r.importError) {
+      return '<div class="table"><h3>Your files could not be loaded</h3><p class="cap">Python stopped while it was reading your code, before any function was called. The error is shown under Problems.</p>' +
+        '<div class="felt-err"><b>' + esc(r.importError.type) + '</b><pre>' + esc(r.importError.text) + '</pre></div></div>';
+    }
+    var html = stepsBar() + '<div class="table">';
+    var st = S.stage, s = r.stages[st];
+    if (!s) {
+      var waitingPlay = stageStatus('play') === 'waiting';
+      html += '<h3>' + esc(st) + '()</h3><p class="cap">' + (waitingPlay ? 'This step runs after play() finishes. Answer the questions in the play() step first.' : 'This step did not run because an earlier step stopped. Fix the first step marked with ! and run again.') + '</p>';
+    } else if (st === 'deck') html += deckView(s);
+    else if (st === 'shuffle') html += shuffleView(s);
+    else if (st === 'deal') html += dealView(s);
+    else if (st === 'play') html += playView(s);
+    else html += winnersView(s);
+    return html + '</div>';
+  }
+
+  function stageProblem(s, fn) {
+    if (s.status === 'missing') return '<div class="felt-err"><b>' + fn + '() was not found.</b> Define it in blackjack.py with this exact name.</div>';
+    if (s.status === 'error') return '<div class="felt-err"><b>Your ' + fn + '() stopped with an error.</b><pre>' + esc(s.error.text) + '</pre></div>' +
+      (s.output ? '<div class="felt-note">It printed:<br><code>' + esc(s.output) + '</code></div>' : '');
+    if (s.status === 'shape') return '<div class="felt-err"><b>' + fn + '() returned something the next step cannot use.</b><pre>It returned: ' + esc(s.repr) + '</pre></div>';
+    return '';
+  }
+
+  function gridHTML(nested, hot) {
+    hot = hot || {};
+    var cols = 0; nested.forEach(function (r) { cols = Math.max(cols, r.length); });
+    var h = '<div class="scrollx"><div class="deckgrid" style="grid-template-columns:24px repeat(' + cols + ', 30px)">';
+    nested.forEach(function (row, ri) {
+      h += '<span class="rl">[' + ri + ']</span>';
+      for (var ci = 0; ci < cols; ci++) {
+        h += ci < row.length ? cardHTML(row[ci], { mini: true, hot: hot[ri + ',' + ci] }) : '<span></span>';
+      }
+    });
+    return h + '</div></div>';
+  }
+
+  function deckView(s) {
+    var h = '<h3>initialize_deck()</h3>';
+    var p = stageProblem(s, 'initialize_deck'); if (p) return h + p;
+    var v = s.value;
+    h += '<p class="cap">Your function returned a list of ' + v.length + ' inner lists. Each row below is one inner list, shown as <code>new_deck[row]</code>, with ' +
+      v.map(function (r) { return r.length; }).join(', ') + ' cards.</p>';
+    h += gridHTML(v);
+    if (s.output) h += '<div class="felt-note">It also printed: <code>' + esc(s.output) + '</code></div>';
+    return h;
+  }
+
+  function diffHot(a, b) {
+    var hot = {}, n = 0;
+    if (!a || !b) return { hot: hot, n: 0 };
+    for (var r = 0; r < b.length; r++) for (var c = 0; c < b[r].length; c++) {
+      if (!a[r] || a[r][c] !== b[r][c]) { hot[r + ',' + c] = true; n++; }
+    }
+    return { hot: hot, n: n };
+  }
+  function shuffleView(s) {
+    var h = '<h3>shuffle_deck(new_deck)</h3>';
+    if (s.status === 'missing') return h + stageProblem(s, 'shuffle_deck');
+    var calls = s.calls || [], frames = s.frames || [];
+    var total = calls.length;
+    if (total === 0) {
+      h += s.status === 'error'
+        ? '<p class="cap">Your <code>shuffle_deck()</code> stopped before its first call to <code>random.randint</code>. This shows the deck it received.</p>'
+        : '<p class="cap">Your shuffle did not call <code>random.randint</code> through the random module, so the steps cannot be replayed. This shows the deck before the call.</p>';
+      h += gridHTML(s.start);
+    } else {
+      if (S.frame > total) S.frame = total;
+      var k = S.frame;
+      var cur = k === 0 ? s.start : frames[k - 1];
+      var prev = k <= 1 ? s.start : frames[k - 2];
+      var d = k === 0 ? { hot: {}, n: 0 } : diffHot(prev, cur);
+      h += '<p class="cap">With <code>random.seed(' + esc($('seed').value) + ')</code>, your function called <code>random.randint</code> ' + total + ' times. Step through the calls to see how <code>new_deck</code> changes after each one. Gold cards changed in that step.</p>';
+      h += '<div class="player"><button data-fr="first" aria-label="First step">|&lt;</button><button data-fr="prev" aria-label="Previous step">&lt;</button>' +
+        '<button data-fr="play" aria-label="Play">' + (S.timer ? 'Pause' : 'Play') + '</button><button data-fr="next" aria-label="Next step">&gt;</button><button data-fr="last" aria-label="Last step">&gt;|</button>' +
+        '<input type="range" id="frameRange" min="0" max="' + total + '" value="' + k + '" aria-label="Shuffle step"><span class="count">' + k + ' / ' + total + '</span></div>';
+      var info;
+      if (k === 0) info = 'Before the first call: the deck from <span class="k">initialize_deck()</span>.';
+      else {
+        var c = calls[k - 1];
+        info = 'Call ' + k + ': <span class="k">random.randint(' + c[0] + ', ' + c[1] + ')</span> returned <span class="k">' + c[2] + '</span>. ' +
+          (d.n === 0 ? 'No card moved in this step.' : d.n === 2 ? 'Two cards swapped places.' : d.n + ' positions changed in this step.');
+      }
+      h += '<div class="stepinfo">' + info + '</div><div style="height:12px"></div>';
+      if (s.framesCut && k > frames.length) h += '<p class="cap">Only the first 120 steps are kept.</p>';
+      h += gridHTML(cur, d.hot);
+    }
+    if (s.status === 'error' || s.status === 'shape') return h + stageProblem(s, 'shuffle_deck');
+    var flat = s.value;
+    h += '<p class="cap" style="margin-top:16px">Your function returned a flat list of <b>' + flat.length + '</b> cards. Index 0 is the top of the deck, so it is dealt first.</p>';
+    h += '<div class="flat">' + flat.map(function (c, i) { return '<span class="ix">' + cardHTML(c, { mini: true }) + i + '</span>'; }).join('') + '</div>';
+    if (s.output) h += '<div class="felt-note">It also printed: <code>' + esc(s.output) + '</code></div>';
+    return h;
+  }
+
+  function seatsHTML(hands, totals, opt) {
+    opt = opt || {};
+    var n = hands.length, players = '', house = '';
+    hands.forEach(function (hand, i) {
+      var isHouse = i === n - 1;
+      var shown = hand, extra = '';
+      if (opt.upto) { shown = opt.upto[i] || []; }
+      var t = totals ? totals[i] : null;
+      var badge = '';
+      if (opt.badges && opt.badges[i]) badge = opt.badges[i];
+      var cls = 'seat' + (isHouse ? ' house' : '') + (opt.active === i ? ' active' : '') + (opt.win && opt.win[i] ? ' win' : '');
+      var cards = Array.isArray(shown) ? shown.map(function (c, ci) {
+        return cardHTML(c, { hot: opt.hot && opt.hot[i] === ci, isNew: opt.newFrom && ci >= opt.newFrom[i] });
+      }).join('') : '<div class="card odd">' + esc(shown) + '</div>';
+      if (opt.ghosts && Array.isArray(shown)) { for (var g = shown.length; g < opt.ghosts; g++) cards += '<div class="card ghost"></div>'; }
+      var tot = (t === null || t === undefined || opt.hideTotals) ? '' : '<span class="tot' + totalClass(t) + '">total ' + t + '</span>';
+      var seat = '<div class="' + cls + '"><div class="who"><b>' + seatName(i, n) + '</b>' + badge + tot + '</div><div class="hand">' + cards + extra + '</div></div>';
+      if (isHouse) house = seat; else players += seat;
+    });
+    return '<div class="player-row">' + players + '</div><div class="player-row house-gap">' + house + '</div>';
+  }
+
+  function dealView(s) {
+    var h = '<h3>deal_deck(deck, ' + esc($('players').value) + ')</h3>';
+    var p = stageProblem(s, 'deal_deck'); if (p) return h + p;
+    var ev = s.events || [], n = s.hands.length;
+    if (!s.usedDealCard || !ev.length) {
+      h += '<p class="cap">Your function returned ' + n + ' hands. It did not call <code>deal_card()</code>, so the order of dealing cannot be replayed; this shows the hands it returned.</p>';
+      h += seatsHTML(s.hands, s.totals, {});
+    } else {
+      if (S.deal > ev.length) S.deal = ev.length;
+      var k = S.deal, upto = [];
+      for (var i = 0; i < n; i++) upto.push([]);
+      var hotSeat = {};
+      for (var j = 0; j < k; j++) {
+        var e = ev[j];
+        if (e[0] >= 0 && e[0] < n) { upto[e[0]].push(e[1]); if (j === k - 1) hotSeat[e[0]] = upto[e[0]].length - 1; }
+      }
+      h += '<p class="cap">Your function called <code>deal_card()</code> ' + ev.length + ' times and returned ' + n + ' hands (' + (n - 1) + ' player' + (n - 1 === 1 ? '' : 's') + ' and the house). Step through to watch each card leave the top of the deck.</p>';
+      h += '<div class="player"><button data-dl="first" aria-label="First card">|&lt;</button><button data-dl="prev" aria-label="Previous card">&lt;</button>' +
+        '<button data-dl="play">' + (S.timer ? 'Pause' : 'Play') + '</button><button data-dl="next" aria-label="Next card">&gt;</button><button data-dl="last" aria-label="Last card">&gt;|</button>' +
+        '<input type="range" id="dealRange" min="0" max="' + ev.length + '" value="' + k + '" aria-label="Deal step"><span class="count">' + k + ' / ' + ev.length + '</span></div>';
+      var info = k === 0 ? 'No cards dealt yet. The deck has ' + (s.deckLeft + ev.length) + ' cards.'
+        : 'Card ' + k + ': <span class="k">' + esc(ev[k - 1][1]) + '</span> went to <span class="k">' + (ev[k - 1][0] >= 0 ? seatName(ev[k - 1][0], n) : 'a list that is not one of the returned hands') + '</span>. ' + (s.deckLeft + ev.length - k) + ' cards left in the deck.';
+      h += '<div class="stepinfo">' + info + '</div><div style="height:12px"></div>';
+      h += seatsHTML(s.hands, k === ev.length ? s.totals : null, { upto: upto, hot: hotSeat, ghosts: 2 });
+    }
+    h += '<p class="cap" style="margin-top:14px">After the call, <code>deck</code> has ' + s.deckLeft + ' cards. Totals come from your own <code>cards_value()</code>.</p>';
+    if (s.output) h += '<div class="felt-note">It also printed: <code>' + esc(s.output) + '</code></div>';
+    return h;
+  }
+
+  function activePlayer(items) {
+    var txt = '';
+    (items || []).forEach(function (it) { if (it[0] === 'out') txt += it[1]; });
+    var m = txt.match(/Player (\d+):/g);
+    if (!m) return null;
+    return parseInt(m[m.length - 1].replace(/\D/g, ''), 10) - 1;
+  }
+  function playView(s) {
+    var h = '<h3>play(deck, all_cards_in_hand)</h3>';
+    if (s.status === 'missing') return h + stageProblem(s, 'play');
+    var n = s.hands.length;
+    var dealHands = S.result.stages.deal.hands;
+    var newFrom = dealHands.map(function (hh) { return Array.isArray(hh) ? hh.length : 0; });
+    var active = s.status === 'waiting' ? activePlayer(s.items) : null;
+    if (s.status === 'waiting') {
+      h += '<p class="cap">Your <code>play()</code> is waiting for an answer' + (active !== null ? ' from <b>' + seatName(active, n) + '</b>' : '') + '. Choose one below. Cards with a white border were added during play.</p>';
+    } else if (s.status === 'ok') {
+      h += '<p class="cap">Your <code>play()</code> finished. Cards with a white border were added during play. The deck has ' + s.deckLeft + ' cards left.</p>';
+    } else {
+      h += '<p class="cap">Your <code>play()</code> stopped with an error. The table shows the hands at that moment.</p>';
+    }
+    h += seatsHTML(s.hands, s.totals, { active: active, newFrom: newFrom });
+    if (s.status === 'waiting') {
+      h += '<div class="player-ctl"><span class="q">' + esc(s.prompt.trim() || 'input()') + '</span>' +
+        '<button data-ans="hit">hit</button><button data-ans="stand">stand</button><button data-ans="cheat">cheat</button>' +
+        '<input type="text" id="otherAns" placeholder="Any other answer" aria-label="Any other answer"><button class="ghosty" id="sendOther">Send</button></div>';
+    }
+    if (s.status === 'error') h += stageProblem(s, 'play');
+    if (S.answers.length) {
+      h += '<div class="answers">Answers so far: ' + S.answers.map(function (a) { return '<code>' + esc(a === '' ? '(empty)' : a) + '</code>'; }).join(' ') +
+        ' <button class="small ghosty" id="undoAns" style="background:transparent;color:var(--felt-ink);border-color:var(--felt-muted)">Undo last</button>' +
+        ' <button class="small" id="resetAns" style="background:transparent;color:var(--felt-ink);border-color:var(--felt-muted)">Start play again</button></div>';
+    }
+    if (s.status === 'ok') h += '<div class="answers"><button class="small" data-stage="winners">See the winners</button></div>';
+    h += '<p class="cap" style="margin-top:14px">Everything your code printed is in the Console tab.</p>';
+    return h;
+  }
+
+  function winnersView(s) {
+    var h = '<h3>identify_winners(all_cards_in_hand)</h3>';
+    var p = stageProblem(s, 'identify_winners'); if (p) return h + p;
+    var hands = S.result.stages.play.hands, n = hands.length, vals = s.value || [];
+    var best = null; vals.forEach(function (v) { if (typeof v === 'number' && (best === null || v > best)) best = v; });
+    var win = {}, badges = {};
+    vals.forEach(function (v, i) {
+      if (best !== null && best >= 0 && v === best) { win[i] = true; badges[i] = '<span class="badge">score ' + v + '</span>'; }
+      else badges[i] = '<span class="badge out">score ' + esc(v) + '</span>';
+    });
+    (s.cheaterFlags || []).forEach(function (f, i) { if (f === true) badges[i] = (badges[i] || '') + ' <span class="badge out">is_cheater: True</span>'; });
+    h += '<p class="cap">Your function printed the result below and returned <code>' + esc(s.repr) + '</code>. Each seat shows its score from that list; the gold seats hold the highest score.</p>';
+    h += '<div class="felt-note"><code>' + esc(s.output || '(nothing printed)').replace(/\n/g, '<br>') + '</code></div>';
+    h += seatsHTML(hands, null, { win: win, badges: badges });
+    if (!Array.isArray(s.value)) h += '<div class="felt-note warn">Your function returned <code>' + esc(s.repr) + '</code>, not a list.</div>';
+    else if (vals.length !== n) h += '<div class="felt-note warn">The returned list has ' + vals.length + ' scores for ' + n + ' hands.</div>';
+    return h;
+  }
+
+  /* ---------- run_game mode ---------- */
+  function gameTable() {
+    var r = S.result;
+    if (!r) return demoTable();
+    if (r.importError) return '<div class="table"><h3>Your files could not be loaded</h3><div class="felt-err"><pre>' + esc(r.importError.text) + '</pre></div></div>';
+    var h = '<div class="table"><h3>run_game()</h3>';
+    if (r.hands) {
+      var active = r.status === 'waiting' ? activePlayer(r.items) : null;
+      h += '<p class="cap">The hands your <code>deal_deck()</code> returned, as they are now. Answer your code\'s questions in the Console tab.</p>' + seatsHTML(r.hands, r.totals, { active: active });
+    } else {
+      h += '<p class="cap">No hands yet. Your code is still asking for the number of players, or it has not called <code>deal_deck()</code>. Answer in the Console tab.</p>';
+    }
+    if (r.status === 'error') h += '<div class="felt-err"><pre>' + esc(r.error.text) + '</pre></div>';
+    return h + '</div>';
+  }
+
+  /* ---------- console ---------- */
+  function itemsHTML(items) {
+    return (items || []).map(function (it) {
+      if (it[0] === 'out') return esc(it[1]);
+      if (it[0] === 'prompt') return '<span class="p">' + esc(it[1]) + '</span>';
+      return '<span class="a">' + esc(it[1]) + '</span>\n';
+    }).join('');
+  }
+  function consoleView() {
+    var r = S.mode === 'examples' ? null : S.result;
+    if (!r) return '<div class="console"><span class="p">Nothing has run yet.</span></div>';
+    var h = '<div class="console" id="console">';
+    if (r.importOutput) h += '<span class="hd">While importing</span>' + esc(r.importOutput);
+    if (r.mode === 'game') {
+      h += '<span class="hd">run_game()</span>' + itemsHTML(r.items);
+      if (r.status === 'error') h += '<span class="e">' + esc(r.error.text) + '</span>';
+      if (r.status === 'ok') h += '\n<span class="p">run_game() finished.</span>';
+    } else if (r.stages) {
+      STAGES.forEach(function (st) {
+        var s = r.stages[st.key]; if (!s) return;
+        var body = st.key === 'play' ? itemsHTML(s.items) : esc(s.output || '');
+        if (st.key === 'winners' && s.status === 'ok') body += '<span class="p">returned ' + esc(s.repr) + '</span>';
+        if (!body && s.status === 'ok') body = '<span class="p">(nothing printed)</span>';
+        h += '<span class="hd">' + st.label + '()</span>' + body;
+        if (s.status === 'error') h += '<span class="e">' + esc(s.error.text) + '</span>';
+      });
+    }
+    if (r.importError) h += '<span class="e">' + esc(r.importError.text) + '</span>';
+    h += '</div>';
+    var waiting = (r.mode === 'game' && r.status === 'waiting') || (r.stages && r.stages.play && r.stages.play.status === 'waiting');
+    if (waiting) {
+      h += '<div class="console-input"><input type="text" id="conIn" placeholder="Type your answer and press Enter" aria-label="Answer"><button class="primary" id="conSend">Send</button>';
+      var list = r.mode === 'game' ? S.gameAnswers : S.answers;
+      if (list.length) h += '<button id="conUndo">Undo last answer</button>';
+      h += '</div>';
+    } else if (r.mode === 'game' && S.gameAnswers.length) {
+      h += '<div class="console-input"><button id="conUndo">Undo last answer</button><button id="conRestart">Play again</button></div>';
+    }
+    return h;
+  }
+
+  /* ---------- code ---------- */
+  function codeView() {
+    var files = ['blackjack.py', 'shuffle_deck.py'];
+    var h = '<div class="tabs" style="margin-bottom:8px">' + files.map(function (f) {
+      return '<button data-file="' + f + '" aria-selected="' + (S.codeFile === f) + '">' + f + '</button>';
+    }).join('') + '</div>';
+    var src = S.files[S.codeFile];
+    if (src === undefined) return h + '<div class="console"><span class="p">This file has not been added yet.</span></div>';
+    var err = currentError();
+    var errLines = {};
+    if (err && err.frames) err.frames.forEach(function (f) { if (f.file === S.codeFile) errLines[f.line] = true; });
+    var warn = {};
+    (S.checks || []).forEach(function (c) { if (c.file === S.codeFile && c.line && c.kind !== 'style') warn[c.line] = c.text; });
+    var rows = src.split('\n').map(function (line, i) {
+      var n = i + 1;
+      var cls = (errLines[n] ? 'e' : warn[n] ? 'w' : '') + (S.focusLine === n ? ' focus' : '');
+      return '<tr class="' + cls + '" id="L' + n + '"' + (warn[n] ? ' title="' + esc(warn[n]) + '"' : '') + '><td class="n">' + n + '</td><td>' + (esc(line) || ' ') + '</td></tr>';
+    }).join('');
+    return h + '<div class="code" id="codebox"><table>' + rows + '</table></div>';
+  }
+
+  /* ---------- handout examples ---------- */
+  function examplesView() {
+    var r = S.examples;
+    if (!r) return '<div class="box"><p class="empty">Add your files, then run to compare your functions with the handout examples.</p></div>';
+    if (r.importError) return '<div class="box"><div class="err"><div class="head">Your files could not be loaded</div><pre class="tb">' + esc(r.importError.text) + '</pre></div></div>';
+    var pass = r.rows.filter(function (x) { return x.status === 'pass'; }).length;
+    var h = '<div class="box"><div class="summary"><b style="font:700 20px var(--display)">' + pass + ' of ' + r.rows.length + ' handout examples match</b>' +
+      '<span class="hint" style="margin:0">Open a row that does not match to see what the handout shows and what your code gave.</span></div>';
+    h += '<div class="scrollx"><table class="ex"><thead><tr><th>Q</th><th>Call</th><th>Result</th></tr></thead><tbody>';
+    r.rows.forEach(function (x) {
+      var label = { pass: 'Match', fail: 'Different', error: 'Error', missing: 'Missing' }[x.status];
+      var detail = x.status === 'pass' ? '' : '<details><summary>Compare</summary><div class="cmp"><div><b>Handout</b><pre>' + esc(x.expected) + '</pre></div><div><b>Your code</b><pre>' + esc(x.got) + '</pre></div></div></details>';
+      h += '<tr><td>' + esc(x.q) + '</td><td class="c">' + esc(x.call) + detail + '</td><td><span class="res ' + x.status + '">' + label + '</span></td></tr>';
+    });
+    return h + '</tbody></table></div></div>';
+  }
+
+  /* ---------- interactions after render ---------- */
+  function sendAnswer(a) {
+    if (S.mode === 'game') S.gameAnswers.push(a); else S.answers.push(a);
+    run();
+  }
+  function afterRender() {
+    Array.prototype.forEach.call(document.querySelectorAll('[data-stage]'), function (b) {
+      b.addEventListener('click', function () { stopTimer(); S.stage = b.getAttribute('data-stage'); S.view = 'table'; render(); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-file]'), function (b) {
+      b.addEventListener('click', function () { S.codeFile = b.getAttribute('data-file'); S.focusLine = null; render(); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ans]'), function (b) {
+      b.addEventListener('click', function () { sendAnswer(b.getAttribute('data-ans')); });
+    });
+    var other = $('sendOther');
+    if (other) other.addEventListener('click', function () { sendAnswer($('otherAns').value); });
+    var oi = $('otherAns');
+    if (oi) oi.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendAnswer(oi.value); });
+    var undo = $('undoAns');
+    if (undo) undo.addEventListener('click', function () { S.answers.pop(); run(); });
+    var reset = $('resetAns');
+    if (reset) reset.addEventListener('click', function () { S.answers = []; run(); });
+    var ci = $('conIn');
+    if (ci) {
+      ci.addEventListener('keydown', function (e) { if (e.key === 'Enter') sendAnswer(ci.value); });
+      $('conSend').addEventListener('click', function () { sendAnswer(ci.value); });
+      ci.focus();
+    }
+    var cu = $('conUndo');
+    if (cu) cu.addEventListener('click', function () { if (S.mode === 'game') S.gameAnswers.pop(); else S.answers.pop(); run(); });
+    var cr = $('conRestart');
+    if (cr) cr.addEventListener('click', function () { S.gameAnswers = []; run(); });
+    var con = $('console'); if (con) con.scrollTop = con.scrollHeight;
+    var fr = $('frameRange');
+    if (fr) fr.addEventListener('input', function () { stopTimer(); S.frame = parseInt(fr.value, 10); render(); });
+    var dr = $('dealRange');
+    if (dr) dr.addEventListener('input', function () { stopTimer(); S.deal = parseInt(dr.value, 10); render(); });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-fr]'), function (b) {
+      b.addEventListener('click', function () { control('frame', b.getAttribute('data-fr'), (S.result.stages.shuffle.calls || []).length); });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-dl]'), function (b) {
+      b.addEventListener('click', function () { control('deal', b.getAttribute('data-dl'), (S.result.stages.deal.events || []).length); });
+    });
+    if (S.view === 'code' && S.focusLine) {
+      var row = $('L' + S.focusLine), box = $('codebox');
+      if (row && box) box.scrollTop = Math.max(0, row.offsetTop - box.clientHeight / 3);
+    }
+  }
+  function stopTimer() { if (S.timer) { clearInterval(S.timer); S.timer = null; } }
+  function control(key, what, max) {
+    if (what === 'play') {
+      if (S.timer) { stopTimer(); render(); return; }
+      if (S[key] >= max) S[key] = 0;
+      var delay = key === 'frame' ? 260 : 420;
+      S.timer = setInterval(function () {
+        if (S[key] >= max) { stopTimer(); render(); return; }
+        S[key] += 1; render();
+      }, delay);
+      render();
+      return;
+    }
+    stopTimer();
+    if (what === 'first') S[key] = 0;
+    if (what === 'last') S[key] = max;
+    if (what === 'prev') S[key] = Math.max(0, S[key] - 1);
+    if (what === 'next') S[key] = Math.min(max, S[key] + 1);
+    render();
+  }
+
+  /* ---------- start ---------- */
+  var saved = recall('files'), savedReal = recall('real');
+  if (saved) { S.files = saved; S.real = savedReal || {}; }
+  showFile('blackjack.py'); showFile('shuffle_deck.py');
+  render();
+  boot().then(function () { autoRun(); });
+})();
+</script>
+
+</body>
+</html>
